@@ -1,0 +1,71 @@
+﻿@import "tailwindcss";
+
+@source "..";
+
+@custom-variant tablet (@media (max-width: 1200px));
+@custom-variant mobile (@media (max-width: 760px));
+
+@theme {
+  --color-zinc-50: #f8faf9;
+  --color-zinc-100: #f0f4ef;
+  --color-zinc-200: #e5eae7;
+  --color-zinc-300: #c9d0ca;
+  --color-zinc-400: #96a198;
+  --color-zinc-500: #819087;
+  --color-zinc-600: #617066;
+  --color-zinc-700: #43584a;
+  --color-zinc-800: #26382f;
+  --color-emerald-50: #eff8f0;
+  --color-emerald-100: #dbeddf;
+  --color-emerald-200: #c6d4ca;
+  --color-emerald-300: #70ac95;
+  --color-emerald-500: #50966b;
+  --color-emerald-600: #29775b;
+  --color-emerald-700: #1d6247;
+  --color-emerald-800: #326b50;
+  --font-sans: Arial, Helvetica, sans-serif;
+  --text-3xs: 0.5rem;
+  --text-2xs: 0.625rem;
+  --text-page-title: clamp(1.75rem, 3vw, 2.25rem);
+}
+
+@layer base {
+  button,
+  input,
+  select {
+    font: inherit;
+  }
+
+  button,
+  select {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  select:disabled {
+    cursor: not-allowed;
+    opacity: 0.48;
+  }
+
+  button,
+  a,
+  select {
+    -webkit-tap-highlight-color: transparent;
+    transition-property: background, color, border-color;
+    transition-duration: 150ms;
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--color-emerald-300);
+    outline-offset: 4px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}

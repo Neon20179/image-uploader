@@ -1,0 +1,53 @@
+package normalizer
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"log/slog"
+
+	"github.com/google/uuid"
+
+	"image-uploader/internal/apperr"
+	"image-uploader/internal/events"
+	"image-uploader/internal/kafka"
+)
+
+type UploadService interface {
+	NormalizeUpload(ctx context.Context, id uuid.UUID) error
+}
+
+type Handler struct {
+	log           *slog.Logger
+	uploadService UploadService
+}
+
+func NewHandler(log *slog.Logger, uploadService UploadService) *Handler {
+	return &Handler{
+		log:           log,
+		uploadService: uploadService,
+	}
+}
+
+func (h *Handler) Handle(ctx context.Context, msg kafka.Message) error {
+	var event events.ProcessCompleted
+	if err := json.Unmarshal(msg.Value, &event); err != nil {
+		return kafka.NewPermanentError(fmt.Errorf("decode: %w", err))
+	}
+
+	if err := h.uploadService.NormalizeUpload(ctx, event.UploadID); err != nil {
+		if errors.Is(err, apperr.ErrNotFound) ||
+			errors.Is(err, apperr.ErrConflict) ||
+			errors.Is(err, apperr.ErrInvalidArgument) {
+			return kafka.NewPermanentError(err)
+		}
+		if apperr.IsUnavailableError(err) && !errors.Is(err, context.Canceled) &&
+			!kafka.IsPermanentError(err) && !kafka.IsRetryableError(err) && !kafka.IsWaitError(err) {
+			return kafka.NewWaitError(err)
+		}
+		return err
+	}
+
+	return nil
+}

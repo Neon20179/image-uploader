@@ -1,0 +1,73 @@
+apiVersion: builtin
+kind: ConfigMapGenerator
+metadata:
+  name: app-config
+name: app-config
+literals:
+  - "SERVER_ADDR=:8000"
+  - "API_RATE_LIMIT_RPS=40"
+  - "API_RATE_LIMIT_BURST=60"
+  - "API_MAX_IN_FLIGHT=20"
+  - "LOGGER_LEVEL=debug"
+  - "LOGGER_FOLDER=/tmp/image-uploader-logs"
+
+  - "POSTGRES_PORT=5432"
+  - "POSTGRES_SSL_MODE=disable"
+  
+  - "KAFKA_PORT=9092"
+  - "KAFKA_MAX_ATTEMPTS=3"
+  - "KAFKA_RETRY_TIMEOUT=1s"
+  - "KAFKA_WAIT_TIMEOUT=5s"
+  - "KAFKA_DELIVERY_TIMEOUT=5s"
+  - "KAFKA_SHUTDOWN_TIMEOUT=10s"
+  - "KAFKA_LINGER=10ms"
+  - "KAFKA_MINIO_TOPIC=minio-events"
+  - "KAFKA_UPLOADED_TOPIC=image-uploaded"
+  - "KAFKA_NORMALIZED_TOPIC=image-normalized"
+  - "KAFKA_EMBEDDING_TOPIC=image-embedded"
+  - "KAFKA_OCR_TOPIC=image-ocr-completed"
+  
+  - "MINIO_BUCKET=images"
+  - "MINIO_SECURE=false"
+  - "MINIO_REGION=us-east-1"
+  - "MINIO_MIN_UPLOAD_SIZE_BYTES=1024"
+  - "MINIO_MAX_UPLOAD_SIZE_BYTES=20971520"
+  
+  - "UPLOAD_RAW_OBJECT_KEY_PREFIX=raw-uploads"
+  - "UPLOAD_NORMALIZED_OBJECT_KEY_PREFIX=normalized"
+  - "UPLOAD_URL_EXPIRY=1h"
+  
+  - "CLIP_BASE_URL=http://clip-api:8000/embed/image"
+  - "CLIP_TIMEOUT=120s"
+  - "CLIP_DEVICE=cpu"
+  - "CLIP_MODEL=ViT-B-32"
+  - "CLIP_PRETRAINED=laion2b_s34b_b79k"
+  - "CLIP_DIMENSIONS=512"
+  - "CLIP_MAX_IMAGE_BYTES=5242880"
+  - "CLIP_MAX_IMAGE_PIXELS=20000000"
+  - "EMBEDDING_BLACKLIST_SIMILARITY_THRESHOLD=0.85"
+  
+  - "OCR_BASE_URL=http://ocr-api:8000/ocr/image"
+  - "OCR_TIMEOUT=120s"
+  - "OCR_DEVICE=cpu"
+  - "OCR_MODEL_DIR=/models/easyocr"
+  - "OCR_LANGUAGES=en,ru"
+  - "OCR_MAX_IMAGE_BYTES=5242880"
+  - "OCR_MAX_IMAGE_PIXELS=20000000"
+  - "OCR_BLACKLIST_SIMILARITY_THRESHOLD=0.80"
+  - "HF_HOME=/models/huggingface"
+  - "OMP_NUM_THREADS=2"
+  - "KAFKA_INGEST_GROUP=ingest"
+  - "KAFKA_INGEST_DLQ_TOPIC=ingest.dlq"
+  - "KAFKA_NORMALIZER_GROUP=normalizer"
+  - "KAFKA_NORMALIZER_DLQ_TOPIC=normalizer.dlq"
+  - "KAFKA_EMBEDDING_GROUP=embedding"
+  - "KAFKA_EMBEDDING_DLQ_TOPIC=embedding.dlq"
+  - "KAFKA_OCR_GROUP=ocr"
+  - "KAFKA_OCR_DLQ_TOPIC=ocr.dlq"
+  - "KAFKA_FINALIZER_GROUP=finalizer"
+  - "KAFKA_FINALIZER_DLQ_TOPIC=finalizer.dlq"
+options:
+  labels:
+    image-uploader.dev/phase: infrastructure
+    app.kubernetes.io/component: configuration

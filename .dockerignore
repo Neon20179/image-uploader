@@ -1,0 +1,12 @@
+.git
+.vscode
+**/.env
+**/.env.*
+out
+web
+services
+k8s
+**/node_modules
+**/.next
+**/test-results
+**/playwright-report

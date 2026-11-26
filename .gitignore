@@ -1,0 +1,7 @@
+out/
+.env
+.env.*
+!.env.example
+__pycache__/
+*.pyc
+/k8s/overlays/dev/secrets.env

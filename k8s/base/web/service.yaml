@@ -1,0 +1,16 @@
+apiVersion: "v1"
+kind: "Service"
+metadata:
+  name: "web"
+  labels:
+    image-uploader.dev/phase: "application"
+    app.kubernetes.io/part-of: "image-uploader"
+    app.kubernetes.io/component: "web"
+spec:
+  selector:
+    app: "web"
+  ports:
+    -
+      name: "http"
+      port: 3000
+      targetPort: 3000

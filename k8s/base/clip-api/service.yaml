@@ -1,0 +1,16 @@
+apiVersion: "v1"
+kind: "Service"
+metadata:
+  name: "clip-api"
+  labels:
+    image-uploader.dev/phase: "application"
+    app.kubernetes.io/part-of: "image-uploader"
+    app.kubernetes.io/component: "clip-api"
+spec:
+  selector:
+    app: "clip-api"
+  ports:
+    -
+      name: "http"
+      port: 8000
+      targetPort: 8000

@@ -1,0 +1,26 @@
+{
+  "tailwindCSS.lint.suggestCanonicalClasses": "ignore",
+  "prettier.documentSelectors": ["./web/**/*"],
+  "prettier.configPath": "./web/.prettierrc",
+  "cSpell.words": [
+    "apperr",
+    "BOOTSTRAPSERVERS",
+    "dtos",
+    "embeddingblacklist",
+    "envconfig",
+    "errgroup",
+    "FINALIZER",
+    "franzgo",
+    "gctx",
+    "godotenv",
+    "goredis",
+    "healthcheck",
+    "imageproc",
+    "Lanczos",
+    "midd",
+    "uploadnormalize",
+    "uploadstatus",
+    "validatable",
+    "webp"
+  ]
+}

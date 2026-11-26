@@ -1,0 +1,36 @@
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: jaeger-rate-limit
+  labels:
+    image-uploader.dev/phase: application
+    app.kubernetes.io/part-of: image-uploader
+spec:
+  rateLimit:
+    average: 20
+    period: 1s
+    burst: 40
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: image-uploader-jaeger
+  labels:
+    image-uploader.dev/phase: application
+    app.kubernetes.io/part-of: image-uploader
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+    traefik.ingress.kubernetes.io/router.middlewares: image-uploader-dev-jaeger-rate-limit@kubernetescrd
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: jaeger.localhost
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: jaeger
+                port:
+                  number: 16686

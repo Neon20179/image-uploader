@@ -1,0 +1,14 @@
+apiVersion: "v1"
+kind: "PersistentVolumeClaim"
+metadata:
+  name: "clip-models"
+  labels:
+    image-uploader.dev/phase: "infrastructure"
+    app.kubernetes.io/part-of: "image-uploader"
+    app.kubernetes.io/component: "clip-api"
+spec:
+  accessModes:
+    - "ReadWriteOnce"
+  resources:
+    requests:
+      storage: "3Gi"

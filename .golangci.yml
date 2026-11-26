@@ -1,0 +1,15 @@
+version: "2"
+
+formatters:
+  enable:
+    - goimports
+    - gci
+  settings:
+    goimports:
+      local-prefixes:
+        - image-uploader
+    gci:
+      sections:
+        - standard
+        - default
+        - prefix(image-uploader)

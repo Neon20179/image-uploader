@@ -1,0 +1,185 @@
+services:
+  jaeger:
+    image: cr.jaegertracing.io/jaegertracing/jaeger:2.23.0
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:16686:16686"
+      - "127.0.0.1:4317:4317"
+    networks:
+      - image_uploader_net
+
+  ocr:
+    container_name: image_uploader_ocr
+    build: ./services/ocr
+    restart: unless-stopped
+    environment:
+      OCR_DEVICE: ${OCR_DEVICE:-cpu}
+      OCR_MODEL_DIR: ${OCR_MODEL_DIR:?Set OCR_MODEL_DIR}
+      OCR_MAX_IMAGE_BYTES: ${OCR_MAX_IMAGE_BYTES:?Set OCR_MAX_IMAGE_BYTES}
+      OCR_MAX_IMAGE_PIXELS: ${OCR_MAX_IMAGE_PIXELS:?Set OCR_MAX_IMAGE_PIXELS}
+    ports:
+      - "${OCR_PORT:-8002}:8000"
+    volumes:
+      - ocr_models:/models
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=5)",
+        ]
+      interval: 15s
+      timeout: 10s
+      start_period: 10m
+      retries: 3
+    networks:
+      - image_uploader_net
+
+  clip:
+    container_name: image_uploader_clip
+    build: ./services/clip
+    restart: unless-stopped
+    environment:
+      CLIP_DEVICE: ${CLIP_DEVICE:-cpu}
+      CLIP_MODEL: ${CLIP_MODEL:?Set CLIP_MODEL}
+      CLIP_PRETRAINED: ${CLIP_PRETRAINED:?Set CLIP_PRETRAINED}
+      CLIP_DIMENSIONS: ${CLIP_DIMENSIONS:?Set CLIP_DIMENSIONS}
+      CLIP_MAX_IMAGE_BYTES: ${CLIP_MAX_IMAGE_BYTES:?Set CLIP_MAX_IMAGE_BYTES}
+      CLIP_MAX_IMAGE_PIXELS: ${CLIP_MAX_IMAGE_PIXELS:?Set CLIP_MAX_IMAGE_PIXELS}
+    ports:
+      - "${CLIP_PORT:-8001}:8000"
+    volumes:
+      - clip_models:/models
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=5)",
+        ]
+      interval: 15s
+      timeout: 10s
+      start_period: 10m
+      retries: 3
+    networks:
+      - image_uploader_net
+
+  postgres:
+    image: pgvector/pgvector:pg18
+    container_name: image_uploader_postgres
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    networks:
+      - image_uploader_net
+
+  kafka:
+    image: apache/kafka:4.0.0
+    container_name: image_uploader_kafka
+    ports:
+      - "${KAFKA_PORT:-9092}:9092"
+    environment:
+      KAFKA_LISTENERS: CONTROLLER://localhost:9091,HOST://0.0.0.0:9092,DOCKER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: HOST://${KAFKA_HOST:-localhost}:${KAFKA_PORT:-9092},DOCKER://kafka:9093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,DOCKER:PLAINTEXT,HOST:PLAINTEXT
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9091
+      KAFKA_INTER_BROKER_LISTENER_NAME: DOCKER
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list",
+        ]
+      interval: 5s
+      timeout: 10s
+      retries: 20
+    networks:
+      - image_uploader_net
+    volumes:
+      - ./out/kafka/data:/var/lib/kafka/data
+      - ./out/kafka/secrets:/etc/kafka/secrets
+      - ./out/kafka/config:/mnt/shared/config
+
+  kafka-ui:
+    image: kafbat/kafka-ui:main
+    container_name: image_uploader_kafka_ui
+    ports:
+      - 8080:8080
+    environment:
+      DYNAMIC_CONFIG_ENABLED: "true"
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9093
+    depends_on:
+      kafka:
+        condition: service_healthy
+    networks:
+      - image_uploader_net
+
+  minio:
+    image: firstfinger/minio:1.7.3
+    container_name: image_uploader_minio
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+      - "9002:9002"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD}
+      MINIO_NOTIFY_KAFKA_ENABLE_1: "on"
+      MINIO_NOTIFY_KAFKA_BROKERS_1: "kafka:9093"
+      MINIO_NOTIFY_KAFKA_TOPIC_1: ${KAFKA_MINIO_TOPIC:-minio-events}
+      MINIO_NOTIFY_KAFKA_QUEUE_DIR_1: "/data/.events"
+      MINIO_NOTIFY_KAFKA_QUEUE_LIMIT_1: "100000"
+    depends_on:
+      kafka:
+        condition: service_healthy
+    volumes:
+      - ./out/miniodata:/data
+    networks:
+      - image_uploader_net
+
+  minio-init:
+    image: firstfinger/minio:1.7.3
+    container_name: image_uploader_minio_init
+    restart: "no"
+    depends_on:
+      - minio
+    environment:
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:?Set MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:?Set MINIO_SECRET_KEY}
+      MINIO_BUCKET: ${MINIO_BUCKET:?Set MINIO_BUCKET}
+      UPLOAD_RAW_OBJECT_KEY_PREFIX: ${UPLOAD_RAW_OBJECT_KEY_PREFIX:-raw-uploads}
+      UPLOAD_NORMALIZED_OBJECT_KEY_PREFIX: ${UPLOAD_NORMALIZED_OBJECT_KEY_PREFIX:?Set UPLOAD_NORMALIZED_OBJECT_KEY_PREFIX}
+    entrypoint: >
+      /bin/sh -c "
+      until mc alias set local http://minio:9000 \"$$MINIO_ACCESS_KEY\" \"$$MINIO_SECRET_KEY\"; do sleep 2; done;
+      mc mb --ignore-existing \"local/$$MINIO_BUCKET\" &&
+      mc anonymous set download \"local/$$MINIO_BUCKET/$$UPLOAD_NORMALIZED_OBJECT_KEY_PREFIX/\" &&
+      mc event add --ignore-existing \"local/$$MINIO_BUCKET\" arn:minio:sqs::1:kafka --event put --prefix \"$$UPLOAD_RAW_OBJECT_KEY_PREFIX\" &&
+      mc event list \"local/$$MINIO_BUCKET\";
+      "
+    networks:
+      - image_uploader_net
+
+volumes:
+  ocr_models:
+  clip_models:
+  postgres_data:
+
+networks:
+  image_uploader_net:
+    name: image_uploader_net

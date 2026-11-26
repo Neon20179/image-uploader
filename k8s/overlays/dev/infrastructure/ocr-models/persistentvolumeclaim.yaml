@@ -1,0 +1,14 @@
+apiVersion: "v1"
+kind: "PersistentVolumeClaim"
+metadata:
+  name: "ocr-models"
+  labels:
+    image-uploader.dev/phase: "infrastructure"
+    app.kubernetes.io/part-of: "image-uploader"
+    app.kubernetes.io/component: "ocr-api"
+spec:
+  accessModes:
+    - "ReadWriteOnce"
+  resources:
+    requests:
+      storage: "3Gi"

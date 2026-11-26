@@ -1,0 +1,50 @@
+apiVersion: "batch/v1"
+kind: "Job"
+metadata:
+  name: "migrate"
+  labels:
+    image-uploader.dev/phase: "bootstrap"
+    app.kubernetes.io/part-of: "image-uploader"
+    app.kubernetes.io/component: "migrations"
+spec:
+  backoffLimit: 3
+  activeDeadlineSeconds: 900
+  template:
+    spec:
+      automountServiceAccountToken: false
+      restartPolicy: "OnFailure"
+      containers:
+        -
+          name: "migrate"
+          image: "image-uploader-migrations:dev"
+          imagePullPolicy: "IfNotPresent"
+          command:
+            - "sh"
+            - "-ec"
+            - "exec migrate -path=/migrations -database \"postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable\" up"
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              memory: "256Mi"
+          envFrom:
+            -
+              configMapRef:
+                name: "app-config"
+          env:
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: POSTGRES_PASSWORD
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: POSTGRES_DB

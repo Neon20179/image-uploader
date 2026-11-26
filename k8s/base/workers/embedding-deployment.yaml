@@ -1,0 +1,61 @@
+apiVersion: "apps/v1"
+kind: "Deployment"
+metadata:
+  name: "embedding-worker"
+  labels:
+    image-uploader.dev/phase: "application"
+    app.kubernetes.io/part-of: "image-uploader"
+    app.kubernetes.io/component: "embedding-worker"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: "embedding-worker"
+  template:
+    metadata:
+      labels:
+        app: "embedding-worker"
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 60
+      containers:
+        -
+          name: "embedding-worker"
+          image: "image-uploader-embedding-worker:dev"
+          imagePullPolicy: "IfNotPresent"
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              memory: "256Mi"
+          envFrom:
+            -
+              configMapRef:
+                name: "app-config"
+          env:
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: POSTGRES_PASSWORD
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: POSTGRES_DB
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: MINIO_ACCESS_KEY
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: MINIO_SECRET_KEY

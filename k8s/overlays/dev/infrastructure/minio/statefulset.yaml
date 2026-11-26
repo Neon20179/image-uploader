@@ -1,0 +1,104 @@
+apiVersion: "apps/v1"
+kind: "StatefulSet"
+metadata:
+  name: "minio"
+  labels:
+    image-uploader.dev/phase: "infrastructure"
+    app.kubernetes.io/part-of: "image-uploader"
+    app.kubernetes.io/component: "minio"
+spec:
+  serviceName: "minio"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: "minio"
+  template:
+    metadata:
+      labels:
+        app: "minio"
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        -
+          name: "minio"
+          image: "firstfinger/minio:1.7.3"
+          ports:
+            -
+              containerPort: 9000
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              memory: "1Gi"
+          volumeMounts:
+            -
+              name: "data"
+              mountPath: "/data"
+          readinessProbe:
+            tcpSocket:
+              port: 9000
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          startupProbe:
+            tcpSocket:
+              port: 9000
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 180
+          env:
+            -
+              name: "MINIO_NOTIFY_KAFKA_ENABLE_1"
+              value: "on"
+            -
+              name: "MINIO_NOTIFY_KAFKA_BROKERS_1"
+              value: "kafka:9092"
+            -
+              name: "MINIO_NOTIFY_KAFKA_TOPIC_1"
+              value: "minio-events"
+            -
+              name: "MINIO_NOTIFY_KAFKA_QUEUE_DIR_1"
+              value: "/data/.events"
+            -
+              name: "MINIO_NOTIFY_KAFKA_QUEUE_LIMIT_1"
+              value: "100000"
+            -
+              name: "MINIO_SITE_REGION"
+              value: "us-east-1"
+            -
+              name: "MINIO_API_CORS_ALLOW_ORIGIN"
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: CORS_ALLOWED_ORIGINS
+            - name: MINIO_BROWSER_REDIRECT
+              value: "off"
+            - name: MINIO_ROOT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: MINIO_ROOT_USER
+            - name: MINIO_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: MINIO_ROOT_PASSWORD
+      initContainers:
+        -
+          name: "wait-kafka"
+          image: "busybox:1.37"
+          command:
+            - "sh"
+            - "-ec"
+            - "until nc -z kafka 9092; do sleep 2; done"
+  volumeClaimTemplates:
+    -
+      metadata:
+        name: "data"
+      spec:
+        accessModes:
+          - "ReadWriteOnce"
+        resources:
+          requests:
+            storage: "5Gi"

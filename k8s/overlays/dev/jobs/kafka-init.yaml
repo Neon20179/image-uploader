@@ -1,0 +1,33 @@
+apiVersion: "batch/v1"
+kind: "Job"
+metadata:
+  name: "kafka-init"
+  labels:
+    image-uploader.dev/phase: "bootstrap"
+    app.kubernetes.io/part-of: "image-uploader"
+    app.kubernetes.io/component: "kafka-init"
+spec:
+  backoffLimit: 3
+  activeDeadlineSeconds: 900
+  template:
+    spec:
+      automountServiceAccountToken: false
+      restartPolicy: "OnFailure"
+      containers:
+        -
+          name: "kafka-init"
+          image: "apache/kafka:4.0.0"
+          env:
+            - name: KAFKA_HEAP_OPTS
+              value: "-Xms64m -Xmx128m"
+          imagePullPolicy: "IfNotPresent"
+          command:
+            - "sh"
+            - "-ec"
+            - "for topic in minio-events image-uploaded image-normalized image-embedded image-ocr-completed ingest.dlq normalizer.dlq embedding.dlq ocr.dlq finalizer.dlq; do /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic \"$topic\" --partitions 3 --replication-factor 1; done"
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "128Mi"
+            limits:
+              memory: "512Mi"

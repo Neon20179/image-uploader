@@ -1,0 +1,312 @@
+basePath: /api/v1
+definitions:
+  domain.ProcessStatus:
+    enum:
+    - pending
+    - completed
+    - failed
+    type: string
+    x-enum-varnames:
+    - ProcessStatusPending
+    - ProcessStatusCompleted
+    - ProcessStatusFailed
+  domain.UploadStatus:
+    enum:
+    - pending
+    - uploaded
+    - processing
+    - ready
+    - blocked
+    - failed
+    type: string
+    x-enum-varnames:
+    - UploadStatusPending
+    - UploadStatusUploaded
+    - UploadStatusProcessing
+    - UploadStatusReady
+    - UploadStatusBlocked
+    - UploadStatusFailed
+  image.GetImagesResponse:
+    properties:
+      count:
+        type: integer
+      images:
+        items:
+          $ref: '#/definitions/image.ImageDTO'
+        type: array
+    type: object
+  image.ImageDTO:
+    properties:
+      createdAt:
+        type: string
+      height:
+        type: integer
+      id:
+        type: string
+      mimeType:
+        type: string
+      size:
+        type: integer
+      url:
+        type: string
+      width:
+        type: integer
+    type: object
+  response.ErrorResponse:
+    properties:
+      message:
+        example: Failed to get image
+        type: string
+    type: object
+  upload.CreateUploadResponse:
+    properties:
+      fields:
+        additionalProperties:
+          type: string
+        type: object
+      status:
+        $ref: '#/definitions/domain.UploadStatus'
+      uploadId:
+        type: string
+      uploadUrl:
+        type: string
+    type: object
+  upload.GetUploadsResponse:
+    properties:
+      count:
+        type: integer
+      uploads:
+        items:
+          $ref: '#/definitions/upload.UploadDTO'
+        type: array
+    type: object
+  upload.UploadDTO:
+    properties:
+      createdAt:
+        type: string
+      embeddingStatus:
+        $ref: '#/definitions/domain.ProcessStatus'
+      id:
+        type: string
+      normalizationStatus:
+        $ref: '#/definitions/domain.ProcessStatus'
+      ocrStatus:
+        $ref: '#/definitions/domain.ProcessStatus'
+      status:
+        $ref: '#/definitions/domain.UploadStatus'
+      updatedAt:
+        type: string
+      url:
+        type: string
+    type: object
+info:
+  contact: {}
+  description: API for creating uploads, tracking image processing, and managing images.
+  title: Image Uploader API
+  version: "1.0"
+paths:
+  /images:
+    get:
+      description: Return a page of images and the total image count. Omit limit to
+        return all remaining images.
+      parameters:
+      - description: Maximum number of images
+        in: query
+        minimum: 0
+        name: limit
+        type: integer
+      - description: Number of images to skip
+        in: query
+        minimum: 0
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/image.GetImagesResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: List images
+      tags:
+      - images
+  /images/{id}:
+    delete:
+      parameters:
+      - description: Image UUID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Image deleted
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Delete an image
+      tags:
+      - images
+    get:
+      description: Return image metadata and its public URL.
+      parameters:
+      - description: Image UUID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/image.ImageDTO'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Get an image
+      tags:
+      - images
+  /uploads:
+    get:
+      description: Return a page of uploads and the total upload count. Omit limit
+        to return all remaining uploads.
+      parameters:
+      - description: Maximum number of uploads
+        in: query
+        minimum: 0
+        name: limit
+        type: integer
+      - description: Number of uploads to skip
+        in: query
+        minimum: 0
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/upload.GetUploadsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: List uploads
+      tags:
+      - uploads
+    post:
+      description: Create an upload without a request body. Submit the returned fields
+        and the file as multipart/form-data to uploadUrl using POST. Then poll GET
+        /uploads/{id} to track asynchronous processing.
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/upload.CreateUploadResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Create an upload
+      tags:
+      - uploads
+  /uploads/{id}:
+    delete:
+      parameters:
+      - description: Upload UUID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Upload deleted
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Delete an upload
+      tags:
+      - uploads
+    get:
+      description: Return upload metadata, its public URL, and processing statuses.
+      parameters:
+      - description: Upload UUID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/upload.UploadDTO'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Get an upload
+      tags:
+      - uploads
+swagger: "2.0"

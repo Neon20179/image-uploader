@@ -1,0 +1,45 @@
+apiVersion: "batch/v1"
+kind: "Job"
+metadata:
+  name: "minio-init"
+  labels:
+    image-uploader.dev/phase: "bootstrap"
+    app.kubernetes.io/part-of: "image-uploader"
+    app.kubernetes.io/component: "minio-init"
+spec:
+  backoffLimit: 3
+  activeDeadlineSeconds: 900
+  template:
+    spec:
+      automountServiceAccountToken: false
+      restartPolicy: "OnFailure"
+      containers:
+        -
+          name: "minio-init"
+          image: "firstfinger/minio:1.7.3"
+          imagePullPolicy: "IfNotPresent"
+          command:
+            - "sh"
+            - "-ec"
+            - "until mc alias set local http://minio:9000 \"$MINIO_ACCESS_KEY\" \"$MINIO_SECRET_KEY\"; do sleep 2; done\nmc mb --ignore-existing \"local/$MINIO_BUCKET\"\nmc anonymous set download \"local/$MINIO_BUCKET/$UPLOAD_NORMALIZED_OBJECT_KEY_PREFIX/\"\nmc event add --ignore-existing \"local/$MINIO_BUCKET\" \"arn:minio:sqs:$MINIO_REGION:1:kafka\" --event put --prefix \"$UPLOAD_RAW_OBJECT_KEY_PREFIX/\"\nmc event list \"local/$MINIO_BUCKET\"\n"
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              memory: "256Mi"
+          envFrom:
+            -
+              configMapRef:
+                name: "app-config"
+          env:
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: MINIO_ACCESS_KEY
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: MINIO_SECRET_KEY

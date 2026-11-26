@@ -1,0 +1,40 @@
+apiVersion: "apps/v1"
+kind: "Deployment"
+metadata:
+  name: "web"
+  labels:
+    image-uploader.dev/phase: "application"
+    app.kubernetes.io/part-of: "image-uploader"
+    app.kubernetes.io/component: "web"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: "web"
+  template:
+    metadata:
+      labels:
+        app: "web"
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 60
+      containers:
+        -
+          name: "web"
+          image: "image-uploader-web:dev"
+          imagePullPolicy: "IfNotPresent"
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              memory: "512Mi"
+          ports:
+            -
+              containerPort: 3000
+          readinessProbe:
+            tcpSocket:
+              port: 3000
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3

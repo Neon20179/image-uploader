@@ -1,0 +1,64 @@
+apiVersion: "apps/v1"
+kind: "Deployment"
+metadata:
+  name: "clip-api"
+  labels:
+    image-uploader.dev/phase: "application"
+    app.kubernetes.io/part-of: "image-uploader"
+    app.kubernetes.io/component: "clip-api"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: "clip-api"
+  template:
+    metadata:
+      labels:
+        app: "clip-api"
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 60
+      containers:
+        -
+          name: "clip-api"
+          image: "image-uploader-clip-api:dev"
+          imagePullPolicy: "IfNotPresent"
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "768Mi"
+            limits:
+              memory: "3Gi"
+          ports:
+            -
+              containerPort: 8000
+          readinessProbe:
+            httpGet:
+              path: "/health"
+              port: 8000
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          envFrom:
+            -
+              configMapRef:
+                name: "app-config"
+          startupProbe:
+            httpGet:
+              path: "/health"
+              port: 8000
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 180
+          volumeMounts:
+            -
+              name: "models"
+              mountPath: "/models"
+      volumes:
+        -
+          name: "models"
+          persistentVolumeClaim:
+            claimName: "clip-models"
+  strategy:
+    type: "Recreate"
+  progressDeadlineSeconds: 2100

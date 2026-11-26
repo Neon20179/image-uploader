@@ -1,0 +1,41 @@
+package postgres
+
+import (
+	"context"
+	"time"
+)
+
+type Querier interface {
+	Query(ctx context.Context, sql string, args ...any) (Rows, error)
+	QueryRow(ctx context.Context, sql string, args ...any) Row
+	Exec(ctx context.Context, sql string, args ...any) (CommandTag, error)
+
+	OpTimeout() time.Duration
+}
+
+type Tx interface {
+	Querier
+	Commit(ctx context.Context) error
+	Rollback(ctx context.Context) error
+}
+
+type Pool interface {
+	Querier
+	Begin(ctx context.Context) (Tx, error)
+	Close()
+}
+
+type Rows interface {
+	Close()
+	Err() error
+	Next() bool
+	Scan(dest ...any) error
+}
+
+type Row interface {
+	Scan(dest ...any) error
+}
+
+type CommandTag interface {
+	RowsAffected() int64
+}
